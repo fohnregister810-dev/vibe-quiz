@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Вайб-квиз — тренажёр терминов</title>
+  <meta name="description" content="Тренажёр 115 терминов вайб-кодинга: карточки, интервальное повторение, режимы и фразы для AI-агента. Работает офлайн.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#16324F">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icons/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="app" id="app">
+
+    <!-- ===== Главная ===== -->
+    <section class="screen active" id="screen-home" aria-label="Главная">
+      <header class="banner">
+        <h1>Вайб-квиз</h1>
+        <div class="sub" id="home-sub">тренажёр терминов вайб-кодинга и работы с AI-агентом</div>
+      </header>
+
+      <div class="strip" id="home-strip" aria-live="polite"></div>
+      <div id="storage-warn"></div>
+
+      <div class="card">
+        <h2>Режим тренировки</h2>
+        <div class="grid">
+          <button class="mode" data-mode="quick" type="button">
+            <span class="mode-icon" aria-hidden="true">⚡</span>
+            <span>
+              <span class="mode-title">Быстрая сессия</span><br>
+              <span class="mode-sub">10 карточек: сначала к повторению, потом новые</span>
+            </span>
+          </button>
+          <button class="mode" data-mode="category" type="button">
+            <span class="mode-icon" aria-hidden="true">📂</span>
+            <span>
+              <span class="mode-title">По категории</span><br>
+              <span class="mode-sub">Отработать одну тему</span>
+            </span>
+          </button>
+          <button class="mode" data-mode="weak" type="button">
+            <span class="mode-icon" aria-hidden="true">🎯</span>
+            <span>
+              <span class="mode-title">Слабые места</span><br>
+              <span class="mode-sub">10 карточек с худшей точностью</span>
+            </span>
+          </button>
+          <button class="mode" data-mode="exam" type="button">
+            <span class="mode-icon" aria-hidden="true">📝</span>
+            <span>
+              <span class="mode-title">Экзамен</span><br>
+              <span class="mode-sub">20 карточек без подсказок, разбор в конце</span>
+            </span>
+          </button>
+          <button class="mode" data-mode="phrases" type="button">
+            <span class="mode-icon" aria-hidden="true">💬</span>
+            <span>
+              <span class="mode-title">Фразы для агента</span><br>
+              <span class="mode-sub">21 готовый запрос: подобрать фразу под ситуацию</span>
+            </span>
+          </button>
+        </div>
+
+        <div class="settings-row" style="margin-top:14px">
+          <div>
+            <span class="field-label" id="lbl-dir">Направление</span>
+            <div class="seg" role="group" aria-labelledby="lbl-dir">
+              <button type="button" data-setting="direction" value="term-def" aria-pressed="true">Термин → определение</button>
+              <button type="button" data-setting="direction" value="def-term" aria-pressed="false">Определение → термин</button>
+            </div>
+          </div>
+          <div>
+            <span class="field-label" id="lbl-opt">Вариантов ответа</span>
+            <div class="seg" role="group" aria-labelledby="lbl-opt">
+              <button type="button" data-setting="options" value="2" aria-pressed="true">2</button>
+              <button type="button" data-setting="options" value="4" aria-pressed="false">4</button>
+            </div>
+          </div>
+          <div id="category-picker" style="display:none">
+            <label class="field-label" for="category-select">Категория</label>
+            <select id="category-select"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Прогресс и данные</h2>
+        <div class="next-row">
+          <button class="btn secondary" type="button" data-nav="stats">Статистика</button>
+          <button class="btn ghost" type="button" data-nav="export">Экспорт прогресса</button>
+          <button class="btn ghost" type="button" data-nav="import">Импорт прогресса</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" hidden>
+        <p class="note">Прогресс хранится только в этом браузере. Перенос на телефон — экспортом в файл и импортом там.</p>
+      </div>
+    </section>
+
+    <!-- ===== Сессия ===== -->
+    <section class="screen" id="screen-session" aria-label="Тренировка">
+      <div class="card">
+        <div class="session-top">
+          <span id="session-info">—</span>
+          <button class="btn ghost" type="button" data-nav="home" style="min-height:36px;padding:4px 12px">Завершить</button>
+        </div>
+        <div class="progressbar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="session-bar"><div></div></div>
+
+        <div class="question" id="question">
+          <span class="q-kind" id="q-kind"></span>
+          <span class="q-text" id="q-text"></span>
+        </div>
+
+        <div class="options" id="options" role="group" aria-label="Варианты ответа"></div>
+
+        <div id="feedback-slot" aria-live="polite"></div>
+      </div>
+      <p class="footer">Клавиши: 1–4 — выбор ответа, Enter — далее</p>
+    </section>
+
+    <!-- ===== Результаты ===== -->
+    <section class="screen" id="screen-results" aria-label="Результаты">
+      <div class="card">
+        <h2 id="results-title">Результат</h2>
+        <div class="big-score">
+          <div class="score"><span id="results-correct">0</span><small> / <span id="results-total">0</span></small></div>
+          <div class="note">точность <span id="results-accuracy">0%</span></div>
+        </div>
+        <div id="results-body"></div>
+        <div class="next-row">
+          <button class="btn" type="button" data-nav="again">Ещё сессия</button>
+          <button class="btn ghost" type="button" data-nav="home">На главную</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Статистика ===== -->
+    <section class="screen" id="screen-stats" aria-label="Статистика">
+      <div class="card">
+        <h2>Статистика</h2>
+        <div id="stats-body"></div>
+        <div class="next-row">
+          <button class="btn ghost" type="button" data-nav="home">На главную</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Настройки</h2>
+        <div class="settings-row">
+          <div>
+            <span class="field-label" id="lbl-goal">Дневная цель, карточек</span>
+            <div class="seg" role="group" aria-labelledby="lbl-goal">
+              <button type="button" data-setting="dailyGoal" value="10" aria-pressed="false">10</button>
+              <button type="button" data-setting="dailyGoal" value="20" aria-pressed="true">20</button>
+              <button type="button" data-setting="dailyGoal" value="40" aria-pressed="false">40</button>
+            </div>
+          </div>
+        </div>
+        <div class="next-row">
+          <button class="btn ghost" type="button" data-nav="reset">Сбросить прогресс</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== Ошибка загрузки банка ===== -->
+    <section class="screen" id="screen-error" aria-label="Ошибка">
+      <div class="error-screen">
+        <h2>Не удалось загрузить банк терминов</h2>
+        <p id="error-text">Файл <code>assets/data/terms.json</code> не прочитан.</p>
+        <button class="btn" type="button" onclick="location.reload()">Повторить</button>
+      </div>
+    </section>
+
+  </div>
+  <script src="assets/app.js"></script>
+</body>
+</html>
